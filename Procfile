@@ -1,1 +1,1 @@
-worker: python DaLa_LaSuDe.py
+web: python DaLa_LaSuDe.py
