@@ -4,18 +4,8 @@ import requests
 import time
 import logging
 
-# ==== CAU HINH ====
 TELEGRAM_TOKEN = "8969964336:AAFacCvP2PlvRBxh4q9wgeFgWL5DgJu7xV8"
 CLAUDE_API_KEY = "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"
-
-ALLOWED_CHATS = []  # Cho phep tat ca nhom
-
-BOT_USERNAME = "DaLaOrderBot"
-
-NHAN_VAT = {
-    "QuangCaoDALA": "Su Phu",
-    "ketoandala": "Su Ty",
-}
 
 SYSTEM_PROMPT = """May la La Su De - tro ly AI cua DaLa Quang Cao tai Buon Ma Thuot.
 
@@ -26,7 +16,7 @@ TINH CACH:
 - Hoc viec/tho phu la "Tieu De", tho chinh la "Anh [ten]"
 - Dung emoji: 🐒⚔️💪🔥✅
 
-KIEN THUC KY THUAT:
+KIEN THUC KY THUAT NGANH BANG HIEU:
 
 VAT TU:
 - Alu: 2 lop nhom + loi nhua PE, day 2-3-4mm, kich thuoc 1220x2440mm
@@ -36,48 +26,34 @@ VAT TU:
 - Inox 304: pho bien nhat, ngoai troi - KHUYEN DUNG
 - Inox 201: re, trong nha. Inox 316: dat, ven bien
 - Han TIG cho inox mong <1.5mm, dong 40-60A, que han 1.6mm
-- Han MIG cho inox day >2mm
 - Xu ly o vang sau han: kem tay inox + danh theo chieu tho
 
 DEN LED & NGUON:
-- LED Module 12V: 0.7W-1.5W/bong, dung cho chu noi mica, hop den
-- LED Day 12V: 8.64W/m (thuong), 13W/m (3 diem sang)
-- TINH NGUON: P = so met x W/m, cong them 20% an toan, I = P / 12V
-- Vi du: 20m LED day 12W/m: P=240W, +20%=288W, I=288/12=24A => chon nguon 30A
-- Quy tac nho: 1m LED day ≈ 1A nguon 12V
-- LED cuoi toi hon dau: day qua dai, can cap dien them o giua
-- LED chop nhay: nguon yeu, thay nguon lon hon
-- Nguon nong: qua tai, thay nguon lon hon hoac them nguon
+- LED Module 12V: 0.7W-1.5W/bong
+- LED Day 12V: 8.64W/m thuong, 13W/m loai tot
+- TINH NGUON: P = so met x W/m, cong 20% an toan, I = P/12V
+- Vi du: 20m LED 12W/m: P=240W, +20%=288W, I=24A => nguon 30A
+- Quy tac: 1m LED day ≈ 1A nguon 12V
+- LED chop nhay: nguon yeu. LED cuoi toi: day qua dai
+- Nguon nong: qua tai
 
 THI CONG:
-- Tuong be tong: mui khoan SDS, tac ke nhua + vit inox 5x50mm
-- Tuong gach: khoan vao giua vien gach, tranh mach vua
-- Ty ren M4: chu nho. M6: chu vua. M8-M10: chu lon nang
-- Thu tu thi cong: ve sinh -> danh dau -> khung sat -> op alu -> chu noi -> dien -> test -> silicon -> ban giao
+- Tuong be tong: mui SDS, tac ke nhua + vit inox 5x50mm
+- Ty ren M4: chu nho. M6: chu vua. M8-M10: chu lon
+- Thu tu: ve sinh -> danh dau -> khung sat -> alu -> chu noi -> dien -> test -> silicon
 
 LOI THUONG GAP:
-- LED tat 1 doan: day dut ngam -> kiem tra tung doan, han lai
-- Chu inox o vang: oxy hoa nhiet sau han -> kem tay inox + danh theo tho
-- Bang phong/bong: keo yeu -> duc bo, dan lai
-- Mica o vang: dung mica TQ -> thay mica Dai Loan
-- Bang rung, keu: khung khong chac -> gia co them diem neo
+- Inox o vang: kem tay inox + danh theo tho
+- LED tat 1 doan: day dut -> kiem tra, han lai
+- Bang phong: keo yeu -> duc bo, dan lai
+- Nguon keu: tu dien loi -> thay moi
 
-GIA VAT TU 2025-2026:
-- Mica Dai Loan: 180k-220k/m2
-- Alu composite: 150k-250k/m2
-- Inox 304 1mm: 350k-500k/m2
-- LED day 12V: 30k-80k/cuon 5m
-- LED module 3 bong: 2k-5k/bong
-- Nguon 12V 5A: 80k-150k
-- Nguon 12V 20A: 250k-400k
-- Nguon 12V 30A: 350k-550k
+GIA 2025-2026:
+- Mica DL: 180k-220k/m2, Alu: 150k-250k/m2
+- Inox 304: 350k-500k/m2
+- Nguon 12V 20A: 250k-400k, 30A: 350k-550k
 
-QUY TAC TRA LOI:
-1. Ky thuat phai CHINH XAC 100%
-2. Tra loi ngan gon, de hieu cho tho
-3. Neu khong chac -> noi thang: "De chua chac, kiem tra lai nhe"
-4. Co the treu nhe nhung khong xuc pham
-"""
+QUY TAC: Ky thuat phai chinh xac. Neu khong chac -> noi thang."""
 
 lich_su = {}
 
@@ -87,7 +63,8 @@ def gui_telegram(chat_id, text, reply_to=None):
     if reply_to:
         data["reply_to_message_id"] = reply_to
     try:
-        requests.post(url, json=data, timeout=10)
+        r = requests.post(url, json=data, timeout=15)
+        return r.json()
     except Exception as e:
         logging.error(f"Loi Telegram: {e}")
 
@@ -100,14 +77,14 @@ def hoi_claude(noi_dung, chat_id):
     }
     if chat_id not in lich_su:
         lich_su[chat_id] = []
-    
+
     lich_su[chat_id].append({"role": "user", "content": noi_dung})
     if len(lich_su[chat_id]) > 10:
         lich_su[chat_id] = lich_su[chat_id][-10:]
 
     payload = {
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 600,
+        "max_tokens": 500,
         "system": SYSTEM_PROMPT,
         "messages": lich_su[chat_id]
     }
@@ -118,89 +95,101 @@ def hoi_claude(noi_dung, chat_id):
             tra_loi = data["content"][0]["text"]
             lich_su[chat_id].append({"role": "assistant", "content": tra_loi})
             return tra_loi
-        else:
-            logging.error(f"Claude error: {data}")
-            return None
+        logging.error(f"Claude error: {data}")
+        return None
     except Exception as e:
         logging.error(f"Loi Claude: {e}")
         return None
 
-def nen_reply(text, chat_id):
+def nen_reply(text):
     if not text:
         return False
     t = text.lower()
-    
-    # Duoc mention
-    if "@lasudebot" in t or "@la_su_de" in t:
+
+    # Duoc mention truc tiep
+    if "@lasudedalab" in t or "@la_su_de" in t or "la su de" in t:
         return True
-    
+
     # Tu khoa ky thuat
-    keywords = [
+    kw_list = [
         "lam sao", "bi loi", "xu ly", "cach lam", "tai sao",
-        "bao nhieu a", "nguon may", "dung loai", "khoan", "han",
-        "led", "mica", "inox", "alu", "nguon", "driver",
+        "bao nhieu a", "nguon may", "khoan", "han",
+        "led", "mica", "inox", "alu", "nguon",
         "bi o", "bi tat", "bi chop", "bi vang", "bi bong",
-        "mui khoan", "ty ren", "tac ke", "silicon", "w/m"
+        "mui khoan", "ty ren", "tac ke", "silicon",
+        "met", "ampe", "watt", "volt", "ip67"
     ]
-    for kw in keywords:
+    for kw in kw_list:
         if kw in t:
             return True
-    
-    # Can dong vien
-    dongvien = ["met qua", "kho qua", "hong roi", "sai roi", "khong biet lam"]
-    for kw in dongvien:
+
+    # Dong vien
+    for kw in ["met qua", "kho qua", "hong roi", "sai roi"]:
         if kw in t:
             return True
-    
+
     return False
 
 def xu_ly(update):
     msg = update.get("message") or update.get("edited_message")
     if not msg:
         return
-    
+
     chat_id = msg["chat"]["id"]
     text = msg.get("text", "")
     msg_id = msg["message_id"]
     sender = msg.get("from", {})
-    
-    if ALLOWED_CHATS and chat_id not in ALLOWED_CHATS:
-        return
-    if not text or len(text) < 3:
+
+    if not text or len(text) < 2:
         return
     if sender.get("is_bot"):
         return
-    
-    username = sender.get("username", "")
+
     ten = sender.get("first_name", "Anh")
-    cach_goi = NHAN_VAT.get(username, ten)
-    
-    if not nen_reply(text, chat_id):
+
+    if not nen_reply(text):
         return
-    
-    noi_dung = text.replace("@LaSuDeBot", "").replace("@la_su_de", "").strip()
-    prompt = f"[{cach_goi} hoi trong nhom DaLa]: {noi_dung}"
-    
+
+    logging.info(f"Nhan tin tu {ten}: {text[:50]}")
+
+    noi_dung = text
+    for tag in ["@LaSuDeDaLaBot", "@la_su_de", "@LaSuDe"]:
+        noi_dung = noi_dung.replace(tag, "").strip()
+
+    prompt = f"[{ten} hoi]: {noi_dung}"
+
     tra_loi = hoi_claude(prompt, chat_id)
     if tra_loi:
+        logging.info(f"Tra loi: {tra_loi[:50]}")
         gui_telegram(chat_id, tra_loi, reply_to=msg_id)
 
 def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(message)s'
+    )
     print("🐒 La Su De da khoi dong!")
     print("Nhan Ctrl+C de dung bot")
-    
+
     offset = 0
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
-    
+
     while True:
         try:
-            r = requests.get(url, params={"offset": offset, "timeout": 30}, timeout=35)
+            r = requests.get(
+                url,
+                params={"offset": offset, "timeout": 30},
+                timeout=35
+            )
             data = r.json()
             if data.get("ok"):
-                for update in data.get("result", []):
+                updates = data.get("result", [])
+                for update in updates:
                     offset = update["update_id"] + 1
                     xu_ly(update)
+            else:
+                logging.error(f"API error: {data}")
+                time.sleep(5)
         except requests.exceptions.Timeout:
             pass
         except Exception as e:
