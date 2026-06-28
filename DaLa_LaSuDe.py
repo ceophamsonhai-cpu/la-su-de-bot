@@ -8,7 +8,7 @@ import logging
 TELEGRAM_TOKEN = "8969964336:AAFacCvP2PlvRBxh4q9wgeFgWL5DgJu7xV8"
 CLAUDE_API_KEY = "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"
 
-ALLOWED_CHATS = [-5348534665]
+ALLOWED_CHATS = []  # Cho phep tat ca nhom
 
 BOT_USERNAME = "DaLaOrderBot"
 
@@ -164,7 +164,7 @@ def xu_ly(update):
     msg_id = msg["message_id"]
     sender = msg.get("from", {})
     
-    if chat_id not in ALLOWED_CHATS:
+    if ALLOWED_CHATS and chat_id not in ALLOWED_CHATS:
         return
     if not text or len(text) < 3:
         return
