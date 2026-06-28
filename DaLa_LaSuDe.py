@@ -3,9 +3,10 @@
 import requests
 import time
 import logging
+import os
 
-TELEGRAM_TOKEN = "8969964336:AAFacCvP2PlvRBxh4q9wgeFgWL5DgJu7xV8"
-CLAUDE_API_KEY = "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"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY")
 
 SYSTEM_PROMPT = """May la La Su De - tro ly AI cua DaLa Quang Cao tai Buon Ma Thuot.
 
@@ -77,11 +78,9 @@ def hoi_claude(noi_dung, chat_id):
     }
     if chat_id not in lich_su:
         lich_su[chat_id] = []
-
     lich_su[chat_id].append({"role": "user", "content": noi_dung})
     if len(lich_su[chat_id]) > 10:
         lich_su[chat_id] = lich_su[chat_id][-10:]
-
     payload = {
         "model": "claude-haiku-4-5-20251001",
         "max_tokens": 500,
@@ -105,12 +104,8 @@ def nen_reply(text):
     if not text:
         return False
     t = text.lower()
-
-    # Duoc mention truc tiep
     if "@lasudedalab" in t or "@la_su_de" in t or "la su de" in t:
         return True
-
-    # Tu khoa ky thuat
     kw_list = [
         "lam sao", "bi loi", "xu ly", "cach lam", "tai sao",
         "bao nhieu a", "nguon may", "khoan", "han",
@@ -122,79 +117,14 @@ def nen_reply(text):
     for kw in kw_list:
         if kw in t:
             return True
-
-    # Dong vien
     for kw in ["met qua", "kho qua", "hong roi", "sai roi"]:
         if kw in t:
             return True
-
     return False
 
 def xu_ly(update):
     msg = update.get("message") or update.get("edited_message")
     if not msg:
         return
-
     chat_id = msg["chat"]["id"]
-    text = msg.get("text", "")
-    msg_id = msg["message_id"]
-    sender = msg.get("from", {})
-
-    if not text or len(text) < 2:
-        return
-    if sender.get("is_bot"):
-        return
-
-    ten = sender.get("first_name", "Anh")
-
-    if not nen_reply(text):
-        return
-
-    logging.info(f"Nhan tin tu {ten}: {text[:50]}")
-
-    noi_dung = text
-    for tag in ["@LaSuDeDaLaBot", "@la_su_de", "@LaSuDe"]:
-        noi_dung = noi_dung.replace(tag, "").strip()
-
-    prompt = f"[{ten} hoi]: {noi_dung}"
-
-    tra_loi = hoi_claude(prompt, chat_id)
-    if tra_loi:
-        logging.info(f"Tra loi: {tra_loi[:50]}")
-        gui_telegram(chat_id, tra_loi, reply_to=msg_id)
-
-def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(message)s'
-    )
-    print("🐒 La Su De da khoi dong!")
-    print("Nhan Ctrl+C de dung bot")
-
-    offset = 0
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
-
-    while True:
-        try:
-            r = requests.get(
-                url,
-                params={"offset": offset, "timeout": 30},
-                timeout=35
-            )
-            data = r.json()
-            if data.get("ok"):
-                updates = data.get("result", [])
-                for update in updates:
-                    offset = update["update_id"] + 1
-                    xu_ly(update)
-            else:
-                logging.error(f"API error: {data}")
-                time.sleep(5)
-        except requests.exceptions.Timeout:
-            pass
-        except Exception as e:
-            logging.error(f"Loi: {e}")
-            time.sleep(5)
-
-if __name__ == "__main__":
-    main()
+    text = msg.get("tex
